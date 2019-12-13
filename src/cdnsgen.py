@@ -17,14 +17,14 @@ import random
 def generate_msgdata(p):
     p[p>0]=1
     p=p.astype(int)
-    for i in xrange(len(p)):
+    for i in range(len(p)):
         if i==0:
             idx=[i]
         elif not np.array_equal(p[i],p[i-1]):
             idx.append(i)
     p=p[idx]
 
-    for i in xrange(len(p[0])):
+    for i in range(len(p[0])):
         if i==0:
             idx=[i]
         elif not np.array_equal(p[:,i],p[:,i-1]):
@@ -114,8 +114,8 @@ class squish_dl:
         x0=0
         y0=0
         draw=ImageDraw.Draw(tmp)
-        for i in xrange(len(delta_x)):
-            for j in xrange(len(delta_y)):
+        for i in range(len(delta_x)):
+            for j in range(len(delta_y)):
                 x1 = x0+delta_x[i]
                 y1 = y0+delta_y[j]
 
@@ -139,8 +139,8 @@ class squish_dl:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver(max_to_keep=100)
             lr=self.init_lr
-            for step in xrange(self.max_iter):
-                train_data, train_label = data.get_train_batch(self.batch_size/2, balance=False)
+            for step in range(self.max_iter):
+                train_data = data.getTrainBatchDP(self.batch_size)
                 recon_loss, recon, _ = sess.run([self.recon_loss, self.reconstruct, self.op], feed_dict={
                                                  self.input_placeholder: np.expand_dims(train_data[:,:,:,0], axis=-1), 
                                                  self.lr_placeholer: lr})
@@ -150,12 +150,12 @@ class squish_dl:
                     print("%s: Step[%g/%g], Loss[%f]"%(datetime.now(), step, self.max_iter, recon_loss))
 
                 if step % self.sv_itr==0 or step==self.max_iter-1:
-                    test_data = data.get_test_batch(batch_size=self.batch_size, mode='detection', dtype='hs')
+                    test_data = data.getTestBatchDP(batch_size=self.batch_size)
                     test_recon = sess.run(self.reconstruct, feed_dict={
                                                  self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                                  self.lr_placeholer: lr})
                     saver.save(sess, self.model_path+'step-'+str(step))
-                    for s in xrange(10):
+                    for s in range(10):
                         topo_in = test_data[s,:,:,0]
                         topo_out = test_recon[s,:,:,0]
                         in_dir = os.path.join(self.model_path,'sample/'+'step-'+str(step)+'-in-'+str(s)+'.png')
@@ -174,10 +174,10 @@ class squish_dl:
             saver = tf.train.Saver(max_to_keep=100)
             ckpt=tf.train.get_checkpoint_state(self.model_path)
             ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
-            print ckpt_name
+            print (ckpt_name)
             saver.restore(sess, os.path.join(self.model_path, ckpt_name))
             test_path=os.path.join(self.model_path, 'test/')
-            test_data = data.get_test_batch(batch_size=10, mode='detection', dtype='hs')
+            test_data = data.getTestBatchDP(batch_size=10)
 
             topo_in = test_data[idx,:,:,0]
             
@@ -234,8 +234,8 @@ class squish_dl:
             axes=[f.add_subplot(10,10,i+1) for i in range(100)]
             name = test_path+'fm-affine.pdf'
 
-            for x in xrange(10):     
-                for y in xrange(10):
+            for x in range(10):     
+                for y in range(10):
                     noise = np.zeros((10,32))
                     a=axes[x*10+y]
                     fm_idx=x
@@ -262,7 +262,7 @@ class squish_dl:
             fm = sess.run(self.fm, feed_dict={
                     self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                     self.noise: np.zeros((10, 32))*1.0})
-            print fm[0]
+            print (fm[0])
             f=plt.figure(figsize=(80,80))
             axes=[f.add_subplot(1,10,i+1) for i in range(10)]
             i=0
@@ -288,12 +288,12 @@ class squish_dl:
             p=mtp.Pool(8)
             #Noise Final
      
-            test_data_all = data.get_test_batch(batch_size=1000, mode='detection', dtype='hs')
+            test_data_all = data.getTestBatchDP(batch_size=1000)
             num_noise=1000
-            for ii in xrange(100):
+            for ii in range(100):
                 test_data=test_data_all[ii*10:(ii+1)*10]
                 bar= Bar('Enumerating Noises', max=num_noise)
-                for i in xrange(num_noise):
+                for i in range(num_noise):
                     noise=np.random.normal(size=(10,32))
                     noise_recon = sess.run(self.reconstruct, feed_dict={
                                         self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
@@ -327,9 +327,9 @@ class squish_dl:
             #fms = np.tile(np.expand_dims(fm, axis=0), reps=(10,1,1))
             input = np.zeros((10,16,16,1))*1.0
             
-            for i in xrange(num_span):
+            for i in range(num_span):
                 noise = np.zeros((10,32))*1.0
-                for j in xrange(10):
+                for j in range(10):
                     comb = np.random.randint(100, size=(10,1))*1.0
                     comb = comb/np.sum(comb) #10 1
                     noise[j] = np.sum(fm* comb, axis=0)
@@ -380,13 +380,13 @@ class squish_dl:
                 #net = slim.conv2d(net, 64, [5, 5], scope='conv0_1')
                 #net = slim.conv2d(net, 64, [5, 5], scope='conv0_2')
                 #net = slim.conv2d(net, 64, [5, 5], scope='conv0_3')
-                print net.get_shape()
+                print (net.get_shape())
                 self.pool1 = slim.conv2d(net, 128, [5, 5], stride=2, scope='pool1') #8 8 
                 net=self.pool1
                 #net = slim.conv2d(self.pool1, 128, [5, 5], scope='conv1_1')
                 #net = slim.conv2d(net, 128, [5, 5], scope='conv1_2')
                 #net = slim.conv2d(net, 128, [5, 5], scope='conv1_3')
-                print net.get_shape()     
+                print (net.get_shape())     
                 self.pool2 = slim.conv2d(net, 256, [5, 5], stride=2, scope='pool2') #4 4 
                 net = self.pool2
             with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
@@ -403,7 +403,7 @@ class squish_dl:
                 net = slim.fully_connected(net, 1024, scope='fc3')
                 net = slim.fully_connected(net, 4*4*256, scope='fc4')
                 net = tf.reshape(net, shape=self.pool2.get_shape())
-                print net.get_shape()
+                print (net.get_shape())
             with slim.arg_scope([slim.conv2d_transpose, slim.conv2d], activation_fn=tf.nn.relu, padding='SAME', stride=1,
                                 weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                                 biases_initializer=tf.constant_initializer(0.0),
@@ -412,11 +412,11 @@ class squish_dl:
                 #net = slim.conv2d(self.upool2, 128, [5, 5], scope='gconv1_1')
                 #net = slim.conv2d(net, 128, [5, 5], scope='gconv1_2') #
                 #net = slim.conv2d(net, 128, [5, 5], scope='gconv1_3')
-                print net.get_shape()
+                print (net.get_shape())
                 net = self.upool2
                 self.upool1 = slim.conv2d_transpose(net, 1, [5, 5], stride=2, padding='SAME', scope='upool1') #16 16
                 net = self.upool1
-                print net.get_shape()
+                print (net.get_shape())
                 #net = slim.conv2d(self.upool1, 64, [5, 5], scope='gconv0_1')
                 #net = slim.conv2d(net, 64, [5, 5], scope='gconv0_2')
 
