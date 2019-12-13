@@ -181,7 +181,15 @@ class EUV:
         squishArrList.append(self.p.map(squishImage_mtp, zip(indices, itr.repeat(df_rows))))
         return np.stack(squishArrList)
     
-
+    def get_batch_with_same_cplx_beta(self, batch_size=10):
+        cx=self.train_df.cX.values
+        tmp_idx=np.where(cx==8)[0]
+        tmp_df = self.train_df.iloc[tmp_idx]
+        cy=tmp_df.cY.values
+        tmp_idx=np.where(cy==8)[0]
+        tmp_df = tmp_df.iloc[tmp_idx]
+        tmp_df = tmp_df.reset_index(drop=True)
+        return self.df2tensor(tmp_df)[0][0:batch_size]
 
 
 
