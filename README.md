@@ -14,6 +14,8 @@ use ``` make df ``` to create train.msgpack and test.msgpack
 
 - you can also create your own msgpack(s) for practical usage by simply replacing the files located in ```./data```
 
+- currently we only support catalogs that ```cX,cY <= 16```
+
 use ``` make euv ``` to train the TCAE.
 
 ### Test
