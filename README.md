@@ -10,20 +10,12 @@ A test layout generator is instead provided in src/fakegen.py, which will genera
 ## How To
 ### Train
 
-use
-```
-make df
-```
-to create train.msgpack and test.msgpack
+use ``` make df ``` to create train.msgpack and test.msgpack
 
-use
-```
-make euv
-```
-to train the TCAE
+- you can also create your own msgpack(s) for practical usage by simply replacing the files located in ```./data```
+
+use ``` make euv ``` to train the TCAE.
 
 ### Test
-```
-make test
-```
-will do the job.
+
+``` make test ``` will do the job.
