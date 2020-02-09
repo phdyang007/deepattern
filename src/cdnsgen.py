@@ -92,6 +92,8 @@ class squish_dl:
         self.noise=tf.placeholder(tf.float32, shape=[None, 64])
         self.lr_placeholer=tf.placeholder(tf.float32, shape=[])
         self.input_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
+        self.gan_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, 8)) #input latent for GAN
+        self.gan_label=tf.placeholder(tf.float32, shape=(self.batch_size, 2)) #label for GAN
         #self.label_placeholder=tf.placeholder(tf.float32, shape=(None, 2))
     def processlabel(self, label, cato=2, delta1 = 0, delta2=0):
         softmaxlabel=np.zeros(len(label)*cato, dtype=np.float32).reshape(len(label), cato)
@@ -369,7 +371,31 @@ class squish_dl:
             self.input_placeholder=tf.placeholder(tf.float32, shape=(10, self.img_size, self.img_size, self.img_channel))
             self.noise=tf.placeholder(tf.float32, shape=[None, 32])
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
+    
+    def build_gan(self, is_training):
+
+    def gan(self, input, is_training):
+        net = input
+        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
+                    biases_initializer=tf.constant_initializer(0.0),
+                    weights_regularizer=slim.l2_regularizer(0.01)):
+                net = slim.fully_connected(net, 16, scope='gc1')
+                latent = slim.fully_connected(net, 32, scope='gc2')
+        with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
+            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
+                    biases_initializer=tf.constant_initializer(0.0),
+                    weights_regularizer=slim.l2_regularizer(0.01)):
+                net = slim.fully_connected(latent, 16, scope='dc1')
+                net = slim.fully_connected(net, 2, scope='dc2')
         
+        if is_training:
+            return net
+        else:
+            return latent
+
     def cae(self, input, is_training, noise=0):
         net=input
         with tf.variable_scope('cae', reuse=tf.AUTO_REUSE):
