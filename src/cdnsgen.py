@@ -373,12 +373,12 @@ class squish_dl:
             self.noise=tf.placeholder(tf.float32, shape=[None, 32])
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
     
-    def build_gan(self, is_training):
-        if is_training:
-            self.glogit, self.glatent = self.gan(self.gan_placeholder, is_training, 'g')
-            self.dlogit, self.dlatent = self.gan(self.gan_placeholder, is_training, 'd')
-            self.gloss = tf.
-        else:
+    #def build_gan(self, is_training):
+    #    if is_training:
+    #        self.glogit, self.glatent = self.gan(self.gan_placeholder, is_training, 'g')
+    #        self.dlogit, self.dlatent = self.gan(self.gan_placeholder, is_training, 'd')
+    #        self.gloss = tf.
+    #    else:
 
     def gan(self, input, is_training, phase):
         net = input
