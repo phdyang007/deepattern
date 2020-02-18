@@ -93,6 +93,7 @@ class squish_dl:
         self.lr_placeholer=tf.placeholder(tf.float32, shape=[])
         self.input_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
         self.gan_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, 8)) #input latent for GAN
+        self.latent_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, 32)) #input for GAN-discriminator training
         self.gan_label=tf.placeholder(tf.float32, shape=(self.batch_size, 2)) #label for GAN
         #self.label_placeholder=tf.placeholder(tf.float32, shape=(None, 2))
     def processlabel(self, label, cato=2, delta1 = 0, delta2=0):
@@ -373,8 +374,13 @@ class squish_dl:
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
     
     def build_gan(self, is_training):
+        if is_training:
+            self.glogit, self.glatent = self.gan(self.gan_placeholder, is_training, 'g')
+            self.dlogit, self.dlatent = self.gan(self.gan_placeholder, is_training, 'd')
+            self.gloss = tf.
+        else:
 
-    def gan(self, input, is_training):
+    def gan(self, input, is_training, phase):
         net = input
         with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
             with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
@@ -388,11 +394,14 @@ class squish_dl:
                     weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                     biases_initializer=tf.constant_initializer(0.0),
                     weights_regularizer=slim.l2_regularizer(0.01)):
-                net = slim.fully_connected(latent, 16, scope='dc1')
+                if  phase=='g':
+                    net = slim.fully_connected(latent, 16, scope='dc1')
+                if  phase=='d':
+                    net = slim.fully_connected(tf.concatenate([latent, self.latent_placeholder],0), 16, scope='dc1')
                 net = slim.fully_connected(net, 2, scope='dc2')
         
         if is_training:
-            return net
+            return net, latent
         else:
             return latent
 
