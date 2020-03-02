@@ -63,7 +63,7 @@ class hsd:
 
 class squish_dl:
     def __init__(self, 
-                 init_lr=0.001,
+                 init_lr=0.01,
                  lr_decay=0.7,
                  max_iter=6000,
                  batch_size=64,
@@ -75,7 +75,8 @@ class squish_dl:
                  show_itr=50,
                  resnet=True, 
                  gpu_id='0',
-                 model_path='./models/'):
+                 model_path='./models/',
+                 gan_model_path='./models/gan_models/'):
         #neural networks spec
         self.init_lr=init_lr
         self.lr_decay=lr_decay
@@ -88,14 +89,15 @@ class squish_dl:
         self.resnet=int(resnet)
         self.show_itr=show_itr
         self.model_path=model_path
+        self.gan_model_path=gan_model_path
         self.gpu_id=gpu_id
-        self.noise=tf.placeholder(tf.float32, shape=[None, 64])
-        self.lr_placeholer=tf.placeholder(tf.float32, shape=[])
-        self.input_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
-        self.gan_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, 8)) #input latent for GAN
-        self.latent_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, 32)) #input for GAN-discriminator training
-        self.gan_label=tf.placeholder(tf.float32, shape=(self.batch_size, 2)) #label for GAN
-        #self.label_placeholder=tf.placeholder(tf.float32, shape=(None, 2))
+        self.noise=tf.compat.v1.placeholder(tf.float32, shape=[None, 64])
+        self.lr_placeholer=tf.compat.v1.placeholder(tf.float32, shape=[])
+        self.input_placeholder=tf.compat.v1.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
+        self.gan_placeholder=tf.compat.v1.placeholder(tf.float32, shape=(self.batch_size, 8)) #input latent for GAN
+        self.latent_placeholder=tf.compat.v1.placeholder(tf.float32, shape=(self.batch_size, 32)) #input latent for GAN-discriminator
+        self.gan_label=tf.compat.v1.placeholder(tf.float32, shape=(self.batch_size, 2)) #label for GAN
+        self.generator_label=tf.compat.v1.placeholder(tf.float32, shape=(2*self.batch_size, 2)) #label for discriminator
     def processlabel(self, label, cato=2, delta1 = 0, delta2=0):
         softmaxlabel=np.zeros(len(label)*cato, dtype=np.float32).reshape(len(label), cato)
         for i in range(0, len(label)):
@@ -134,10 +136,10 @@ class squish_dl:
             return np.array(tmp)
     def run(self, data):
         self.build_model(True)
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
         delta=np.ones(16) * 5
-
+       
         with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver(max_to_keep=100)
@@ -165,14 +167,39 @@ class squish_dl:
                         out_dir = os.path.join(self.model_path,'sample/'+'step-'+str(step)+'-out-'+str(s)+'.png')
                         self.squish2img(topo_in, delta, delta, in_dir)
                         self.squish2img(topo_out, delta, delta, out_dir)
-          
+        
+        print("======train GAN======")
+        self.build_gan(True)
+        label=[]
+        gen_label=[]
+        for i in range(self.batch_size):
+            label.append([1,0])
+            gen_label.append([0,1])
+            gen_label.append([1,0])
+        with tf.compat.v1.Session(config=config) as sess:
+            sess.run(tf.compat.v1.global_variables_initializer())
+            saver = tf.compat.v1.train.Saver(max_to_keep=100)
+            lr=self.init_lr
+
+            for step in range(self.max_iter):
+                gan_input = np.random.normal(size=(self.batch_size, 8))
+                gen_train_data = data.getGanBatchDP(self.batch_size)
+                g_logit, g_latent, g_loss, d_logit, d_latent, d_loss = sess.run([self.glogit, self.glatent, self.gloss,
+self.dlogit, self.dlatent, self.dloss],  feed_dict={self.gan_placeholder: gan_input, self.gan_label: label,
+self.latent_placeholder: gen_train_data, self.generator_label: gen_label, self.lr_placeholer: lr})
+
+                if step % self.show_itr == 0:
+                    print("%s: Step[%g/%g], gLoss[%f], dLoss[%f]"%(datetime.now(), step, self.max_iter, g_loss, d_loss))    
+                if step % self.sv_itr==0 or step==self.max_iter-1:
+                    saver.save(sess, self.gan_model_path+'step-'+str(step))
+
     def test(self, data):
         self.build_model(False)
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
         delta = np.ones(16)*5
 
-        with tf.Session(config=config) as sess:
+        with tf.compat.v1.Session(config=config) as sess:
             idx=1
             saver = tf.train.Saver(max_to_keep=100)
             ckpt=tf.train.get_checkpoint_state(self.model_path)
@@ -366,48 +393,56 @@ class squish_dl:
 
         if is_training:
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=True)
-            self.recon_loss=tf.reduce_mean(tf.squared_difference(self.input_placeholder, self.reconstruct))
-            self.op=tf.train.RMSPropOptimizer(self.lr_placeholer).minimize(self.recon_loss)
+            self.recon_loss=tf.reduce_mean(tf.math.squared_difference(self.input_placeholder, self.reconstruct))
+            self.op=tf.compat.v1.train.RMSPropOptimizer(self.lr_placeholer).minimize(self.recon_loss)
         else:
             self.input_placeholder=tf.placeholder(tf.float32, shape=(10, self.img_size, self.img_size, self.img_channel))
             self.noise=tf.placeholder(tf.float32, shape=[None, 32])
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
     
-    #def build_gan(self, is_training):
-    #    if is_training:
-    #        self.glogit, self.glatent = self.gan(self.gan_placeholder, is_training, 'g')
-    #        self.dlogit, self.dlatent = self.gan(self.gan_placeholder, is_training, 'd')
-    #        self.gloss = tf.
-    #    else:
-
+    def build_gan(self, is_training):
+        if is_training:
+            self.glogit, self.glatent = self.gan(input=self.gan_placeholder, is_training=True, phase='g')
+            loss1 = tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.gan_label, logits=self.glogit)
+            self.gloss = tf.reduce_mean(loss1)
+            self.gop = tf.compat.v1.train.RMSPropOptimizer(self.lr_placeholer).minimize(self.gloss)
+            
+            tf.compat.v1.get_variable_scope().reuse_variables()
+            self.dlogit, self.dlatent = self.gan(input=self.gan_placeholder, is_training=True, phase='d')
+            loss2 = tf.nn.softmax_cross_entropy_with_logits(labels=self.generator_label, logits=self.dlogit)
+            self.dloss = tf.reduce_mean(loss2)
+            self.dop = tf.compat.v1.train.RMSPropOptimizer(self.lr_placeholer).minimize(self.dloss)
+        else:
+            self.gan_placeholder=tf.placeholder(tf.float32, shape=(10, 8))
+            self.latent = self.gan(input=self.gan_placeholder, is_training=False, phase='g')    
+ 
     def gan(self, input, is_training, phase):
         net = input
-        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
+        with tf.compat.v1.variable_scope('generator', reuse=tf.compat.v1.AUTO_REUSE):
+            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                     biases_initializer=tf.constant_initializer(0.0),
                     weights_regularizer=slim.l2_regularizer(0.01)):
                 net = slim.fully_connected(net, 16, scope='gc1')
                 latent = slim.fully_connected(net, 32, scope='gc2')
-        with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
+        with tf.compat.v1.variable_scope('discriminator', reuse=tf.compat.v1.AUTO_REUSE):
+            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                     biases_initializer=tf.constant_initializer(0.0),
                     weights_regularizer=slim.l2_regularizer(0.01)):
                 if  phase=='g':
                     net = slim.fully_connected(latent, 16, scope='dc1')
                 if  phase=='d':
-                    net = slim.fully_connected(tf.concatenate([latent, self.latent_placeholder],0), 16, scope='dc1')
+                    net = slim.fully_connected(tf.concat([latent, self.latent_placeholder],0), 16, scope='dc1')
                 net = slim.fully_connected(net, 2, scope='dc2')
-        
         if is_training:
             return net, latent
         else:
             return latent
-
+    
     def cae(self, input, is_training, noise=0):
         net=input
-        with tf.variable_scope('cae', reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope('cae', reuse=tf.compat.v1.AUTO_REUSE):
             with slim.arg_scope([slim.conv2d], activation_fn=tf.nn.relu, stride=1, padding='SAME',
                                 weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                                 biases_initializer=tf.constant_initializer(0.0),

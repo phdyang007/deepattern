@@ -153,32 +153,40 @@ class EUV:
     def getDataDP(self):
         train_path = './data/train.msgpack'
         test_path = './data/test.msgpack'
+        gan_path = './data/gandata.msgpack'
         self.train_df = pd.read_msgpack(train_path)
         self.test_df = pd.read_msgpack(test_path)
+        self.gan_df = pd.read_msgpack(gan_path)
         self.train_length = self.train_df.shape[0]
         self.test_length = self.test_df.shape[0]
-    
+        self.gan_length = self.gan_df.shape[0]
+
     def getTrainBatchDP(self, batch_size):
         idx=rd.sample(list(np.arange(self.train_df.shape[0])), batch_size)
-
         train=self.df2tensor(self.train_df.iloc[idx])[0]
-
 
         return train
     def getTestBatchDP(self, batch_size):
-
         idx=rd.sample(list(np.arange(self.test_df.shape[0])), batch_size)
-
         test=self.df2tensor(self.test_df.iloc[idx])[0]
 
-
         return test
+    def getGanBatchDP(self, batch_size):
+        idx=rd.sample(list(np.arange(self.gan_df.shape[0])), batch_size)
+        #gan=self.df2tensor(self.gan_df.iloc[idx])[0]
+        gan=[]
+        for idxx in idx:
+            gan.append(self.gan_df.iloc[idxx][0])
+        gan=np.asarray(gan)
+        
+        return np.stack(gan)    
 
     def df2tensor(self, df_rows):
         indices=range(df_rows.shape[0])
         df_rows=df_rows.reset_index(drop=True)
         squishArrList=[]
         squishArrList.append(self.p.map(squishImage_mtp, zip(indices, itr.repeat(df_rows))))
+     
         return np.stack(squishArrList)
     
     def get_batch_with_same_cplx_beta(self, batch_size=10):
