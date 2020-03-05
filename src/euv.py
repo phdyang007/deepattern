@@ -12,7 +12,7 @@ import time
 import itertools as itr
 from sklearn.utils import shuffle
 
-def squishImage_mtp(zip_args, maxX=16, maxY=16, nchannels=3, scale_delta=96.0):
+def squishImage_mtp(zip_args, maxX=24, maxY=24, nchannels=3, scale_delta=96.0):
     df=zip_args[1]
     index=zip_args[0]
     df_row=df.iloc[index]

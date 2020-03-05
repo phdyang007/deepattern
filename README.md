@@ -5,7 +5,7 @@ A TCAE implementation for 2D pattern generation.
 ## How To
 ### Train
 
-
+``` make 2d ``` will do the job.
 
 ### Test
 

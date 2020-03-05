@@ -68,7 +68,7 @@ class squish_dl:
                  max_iter=6000,
                  batch_size=64,
                  test_batch_size=300,
-                 img_size=16,
+                 img_size=24,
                  img_channel=1,
                  lr_decay_itr=2000,
                  sv_itr=1000,
@@ -136,7 +136,7 @@ class squish_dl:
         self.build_model(True)
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
-        delta=np.ones(16) * 5
+        delta=np.ones(self.img_size) * 5
 
         with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
@@ -170,7 +170,7 @@ class squish_dl:
         self.build_model(False)
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
-        delta = np.ones(16)*5
+        delta = np.ones(self.img_size)*5
 
         with tf.Session(config=config) as sess:
             idx=1
@@ -328,7 +328,7 @@ class squish_dl:
             num_span=100000
             bar = Bar('Enumerating Span', max=num_span)
             #fms = np.tile(np.expand_dims(fm, axis=0), reps=(10,1,1))
-            input = np.zeros((10,16,16,1))*1.0
+            input = np.zeros((10,self.img_size,self.img_size,1))*1.0
             
             for i in range(num_span):
                 noise = np.zeros((10,32))*1.0
@@ -436,7 +436,7 @@ class squish_dl:
                     self.fm = slim.fully_connected(net, 32, scope='fc2') + noise
                 net =self.fm
                 net = slim.fully_connected(net, 1024, scope='fc3')
-                net = slim.fully_connected(net, 4*4*256, scope='fc4')
+                net = slim.fully_connected(net, 6*6*256, scope='fc4')
                 net = tf.reshape(net, shape=self.pool2.get_shape())
                 print (net.get_shape())
             with slim.arg_scope([slim.conv2d_transpose, slim.conv2d], activation_fn=tf.nn.relu, padding='SAME', stride=1,
