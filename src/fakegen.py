@@ -1,41 +1,31 @@
 import pandas as pd 
 import numpy as np 
-import sys 
+import sys
+import os 
 from progress.bar import Bar 
 
 class FAKE:
-    def __init__(self,cmin,cmax,count):
-        self.complexity = np.arange(cmin,cmax+1)
-        self.count=count
-        self.level=0
+    def __init__(self):
+        self.data_path=os.getcwd()+"/data/valid_data.csv"
+        print("path:", self.data_path)
         self.head=['id','cX','cY','topoSig']
-        self.data=[]
-    def genPattern(self):
-        bar = Bar('generating data', max = self.count)
-        for i in range(self.count):
-            size=np.random.choice(self.complexity, 1)[0]
-            topo=np.random.randint(2, size=(size,size))
-            for j in range(1,size,2):
-                topo[j]=topo[j]*0
-            cx=size
-            cy=size
-            toposig=''.join(topo.flatten().astype(str))
-            self.data.append([i,cx,cy,toposig])
-            bar.next()
+    def genPattern(self, phase):
+        input_data = pd.read_csv(self.data_path)
+        input_data.columns = self.head
+        if phase is "train":
+            return input_data.head(int(input_data.shape[0]*0.8))
+        if phase is "test":
+            return input_data.tail(int(input_data.shape[0]*0.2))
 
-        bar.finish()
-
-    def dump2msgpack(self, path):
-        self.df = pd.DataFrame(data=self.data, columns=self.head)
+    def dump2msgpack(self, data, path):
+        self.df = pd.DataFrame(data=data, columns=self.head)
         self.df.to_msgpack(path)
 
 
-
-fake_enum = FAKE(3,10,10000)
-fake_enum.genPattern()
-fake_enum.dump2msgpack("./data/train.msgpack")
-fake_enum = FAKE(3,10,10000)
-fake_enum.genPattern()
-fake_enum.dump2msgpack("./data/test.msgpack")
+fake_enum = FAKE()
+train_data = fake_enum.genPattern("train")
+fake_enum.dump2msgpack(train_data, "./data/train.msgpack")
+test_data = fake_enum.genPattern("test")
+fake_enum.dump2msgpack(test_data, "./data/test.msgpack")
 print(fake_enum.df)
 
