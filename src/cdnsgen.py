@@ -15,44 +15,32 @@ import multiprocessing as mtp
 import random
 
 def generate_msgdata(p):
+     
     p[p>0]=1
     p=p.astype(int)
-    for i in range(len(p)):
-        if i==0:
-            idx=[i]
-        elif not np.array_equal(p[i],p[i-1]):
-            idx.append(i)
-    p=p[idx]
 
-    for i in range(len(p[0])):
-        if i==0:
-            idx=[i]
-        elif not np.array_equal(p[:,i],p[:,i-1]):
-            idx.append(i)
-    p=p[:,idx]
-
-    if np.all(p[0]==0): p=p[1:]
-    if np.all(p[-1]==0) and  random.random() > 0.5: p=p[:-1]
-    if np.all(p[:,0]==0): p=p[:,1:]
-    if np.all(p[:,-1]==0): p=p[:,:-1]
+    cX=p.shape[0]
+    cY=p.shape[1]
     
-
-    cY=p.shape[0]
-    cX=p.shape[1]
-
-    if np.sum(p[1::2])>0 and np.sum(p[0::2])>0:
-        valid=0
-    else:
-        valid=1
-
-
+    for i in range(cX-1):
+        for j in range (cY-1):
+            if p[i][j] is 1 and p[i+1][j+1] is 1:
+                if p[i+1][j] is 0 and p[i][j+1] is 0:
+                    valid=0
+                else:
+                    valid=1
+            elif p[i+1][j] is 1 and p[i][j+1] is 1:
+                if p[i][j] is 0 and p[i+1][j+1] is 0:
+                    valid=0
+                else: 
+                    valid=1
+            else:
+                valid=1
+            
     topoSig=''.join(map(str, p.flatten()))
-
-    return [topoSig, cX, cY, valid]
-
-
-
-
+    
+    return [topoSig, cX, cY, valid] 
+    
 
 class hsd:
     def __init__(self, input_type, mode):
@@ -310,6 +298,7 @@ class squish_dl:
                     bar.next()
                 bar.finish()
                 tmp = []
+                #print(type(noise_patterns), np.asarray(noise_patterns).shape)
                 tmp.append(p.map(generate_msgdata, noise_patterns))
                 tmp=tmp[0]
          
