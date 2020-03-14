@@ -3,6 +3,8 @@ import sys
 import random as rd 
 import numpy as np 
 import os
+import multiprocessing as mtp
+rd.seed(2)
 
 msgpath=sys.argv[1]
 outmsgpath = sys.argv[2]
@@ -25,6 +27,52 @@ total_size = df.shape[0]
 for row in byte_rows:
     df[row] = df[row].str.decode(encoding='ASCII')
 
+def organize(iloc, df=df):
+    swap = 0
+    dfrow = df.iloc[iloc]
+
+  
+    topoSig = dfrow['topoSig']
+    m = np.uint8(dfrow['cX'])
+    n = np.uint8(dfrow['cY'])
+   
+   
+    yDelta = np.array(dfrow['yDelta'].split(' ')).astype(int)
+
+
+
+    topo2d  = np.array(list(dfrow['topoSig'])).astype(np.uint8)
+    topo2d  = topo2d.reshape((n,m),order='C')
+
+
+
+    for i in yDelta:
+        if not i%16==0:
+            swap  = 1
+            print("Found misorder at %g"%iloc)
+            break
+    
+    if swap:
+        tmpC = dfrow['cX']
+        dfrow['cX']=dfrow['cY']
+        dfrow['cY']=tmpC
+
+        tmpD = dfrow['xDelta']
+        dfrow['xDelta']=dfrow['yDelta']
+        dfrow['yDelta']=tmpD
+
+
+ 
+        topo2d = topo2d.transpose().flatten()
+        dfrow['topoSig'] = ' '.join(topo2d.astype(str))
+    return dfrow
+
+
+#organize(iloc=71559)
+
+p=mtp.Pool(mtp.cpu_count())
+
+df= pd.concat(p.map(organize,range(len(df))), axis=1).transpose()
 
 
 
