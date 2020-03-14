@@ -303,7 +303,7 @@ class squish_dl:
                                         self.noise: noise})
                     if i == 0:
                         noise_patterns = noise_recon[:,:,:,0]
-                        self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
+                        #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
                     else:
                         noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
                     
@@ -317,7 +317,7 @@ class squish_dl:
                 noise_df.to_msgpack(test_path+'noise_data_'+str(ii)+'.msgpack')
 
 
-            
+            """
             #Span of the Training set
 
             test_data=data.get_batch_with_same_cplx_beta()
@@ -353,7 +353,7 @@ class squish_dl:
                     span_df.to_msgpack(test_path+'span_data_'+str(id)+'.msgpack')   
                 bar.next()
             bar.finish()
-        
+            """
 
     def build_model(self, is_training):
         #self.feature=self.discriminator(self.input_placeholder, is_training)

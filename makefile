@@ -20,6 +20,8 @@ train%:
 test%:
 	rm -rf models/test/*
 	python3 src/test.py ./data/$* ./models/$*
+	python3 src/merge.py ./models/$*/
+	rm -rf models/test/noise_data_*.msgpack
 
 clean%:
 	rm -rf models/$*
