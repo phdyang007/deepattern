@@ -55,20 +55,20 @@ def generate_msgdata(p):
 
 
 class hsd:
-    def __init__(self, input_type, mode):
+    def __init__(self, input_type, mode, model_path):
         self.input_type=input_type
         if input_type=='euv':
-            self.model = squish_dl()
+            self.model = squish_dl(model_path=model_path)
 
 
 class squish_dl:
     def __init__(self, 
                  init_lr=0.001,
-                 lr_decay=0.7,
-                 max_iter=6000,
+                 lr_decay=0.5,
+                 max_iter=10000,
                  batch_size=64,
                  test_batch_size=300,
-                 img_size=16,
+                 img_size=24,
                  img_channel=1,
                  lr_decay_itr=2000,
                  sv_itr=1000,
@@ -113,7 +113,7 @@ class squish_dl:
             bias = 1.0/(1+np.exp(alpha*loss))
         return bias
     def squish2img(self, topo, delta_x, delta_y, dir):
-        tmp=Image.new(mode='L', size=(80,80))
+        tmp=Image.new(mode='L', size=(self.img_size*5,self.img_size*5))
         x0=0
         y0=0
         draw=ImageDraw.Draw(tmp)
@@ -136,7 +136,7 @@ class squish_dl:
         self.build_model(True)
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
-        delta=np.ones(16) * 5
+        delta=np.ones(self.img_size) * 5
 
         with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
@@ -157,7 +157,7 @@ class squish_dl:
                     test_recon = sess.run(self.reconstruct, feed_dict={
                                                  self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                                  self.lr_placeholer: lr})
-                    saver.save(sess, self.model_path+'step-'+str(step))
+                    saver.save(sess, os.path.join(self.model_path,'step-'+str(step)))
                     for s in range(10):
                         topo_in = test_data[s,:,:,0]
                         topo_out = test_recon[s,:,:,0]
@@ -170,7 +170,7 @@ class squish_dl:
         self.build_model(False)
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
-        delta = np.ones(16)*5
+        delta = np.ones(self.img_size)*5
 
         with tf.Session(config=config) as sess:
             idx=1
@@ -321,14 +321,14 @@ class squish_dl:
             #Span of the Training set
 
             test_data=data.get_batch_with_same_cplx_beta()
-            #10 16 16 3
+            #10 self.img_size self.img_size 3
             fm = sess.run(self.fm, feed_dict={
                           self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                           self.noise: np.zeros((10,32))*1.0})
             num_span=100000
             bar = Bar('Enumerating Span', max=num_span)
             #fms = np.tile(np.expand_dims(fm, axis=0), reps=(10,1,1))
-            input = np.zeros((10,16,16,1))*1.0
+            input = np.zeros((10,self.img_size,self.img_size,1))*1.0
             
             for i in range(num_span):
                 noise = np.zeros((10,32))*1.0
@@ -380,30 +380,6 @@ class squish_dl:
     #        self.gloss = tf.
     #    else:
 
-    def gan(self, input, is_training, phase):
-        net = input
-        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
-                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                    biases_initializer=tf.constant_initializer(0.0),
-                    weights_regularizer=slim.l2_regularizer(0.01)):
-                net = slim.fully_connected(net, 16, scope='gc1')
-                latent = slim.fully_connected(net, 32, scope='gc2')
-        with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-            with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
-                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                    biases_initializer=tf.constant_initializer(0.0),
-                    weights_regularizer=slim.l2_regularizer(0.01)):
-                if  phase=='g':
-                    net = slim.fully_connected(latent, 16, scope='dc1')
-                if  phase=='d':
-                    net = slim.fully_connected(tf.concatenate([latent, self.latent_placeholder],0), 16, scope='dc1')
-                net = slim.fully_connected(net, 2, scope='dc2')
-        
-        if is_training:
-            return net, latent
-        else:
-            return latent
 
     def cae(self, input, is_training, noise=0):
         net=input
@@ -416,13 +392,13 @@ class squish_dl:
                 #net = slim.conv2d(net, 64, [5, 5], scope='conv0_2')
                 #net = slim.conv2d(net, 64, [5, 5], scope='conv0_3')
                 print (net.get_shape())
-                self.pool1 = slim.conv2d(net, 128, [5, 5], stride=2, scope='pool1') #8 8 
+                self.pool1 = slim.conv2d(net, 128, [5, 5], stride=2, scope='pool1') #self.img_size/2 self.img_size/2
                 net=self.pool1
                 #net = slim.conv2d(self.pool1, 128, [5, 5], scope='conv1_1')
                 #net = slim.conv2d(net, 128, [5, 5], scope='conv1_2')
                 #net = slim.conv2d(net, 128, [5, 5], scope='conv1_3')
                 print (net.get_shape())     
-                self.pool2 = slim.conv2d(net, 256, [5, 5], stride=2, scope='pool2') #4 4 
+                self.pool2 = slim.conv2d(net, 256, [5, 5], stride=2, scope='pool2') #self.img_size/4 self.img_size/4
                 net = self.pool2
             with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
@@ -436,20 +412,20 @@ class squish_dl:
                     self.fm = slim.fully_connected(net, 32, scope='fc2') + noise
                 net =self.fm
                 net = slim.fully_connected(net, 1024, scope='fc3')
-                net = slim.fully_connected(net, 4*4*256, scope='fc4')
+                net = slim.fully_connected(net, (self.img_size//4)*(self.img_size//4)*256, scope='fc4')
                 net = tf.reshape(net, shape=self.pool2.get_shape())
                 print (net.get_shape())
             with slim.arg_scope([slim.conv2d_transpose, slim.conv2d], activation_fn=tf.nn.relu, padding='SAME', stride=1,
                                 weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                                 biases_initializer=tf.constant_initializer(0.0),
                                 weights_regularizer=slim.l2_regularizer(0.001)):
-                self.upool2 = slim.conv2d_transpose(net, 128, [5, 5], stride=2, padding='SAME', scope='upool2') #8 8
+                self.upool2 = slim.conv2d_transpose(net, 128, [5, 5], stride=2, padding='SAME', scope='upool2') #self.img_size/2 self.img_size/2
                 #net = slim.conv2d(self.upool2, 128, [5, 5], scope='gconv1_1')
                 #net = slim.conv2d(net, 128, [5, 5], scope='gconv1_2') #
                 #net = slim.conv2d(net, 128, [5, 5], scope='gconv1_3')
                 print (net.get_shape())
                 net = self.upool2
-                self.upool1 = slim.conv2d_transpose(net, 1, [5, 5], stride=2, padding='SAME', scope='upool1') #16 16
+                self.upool1 = slim.conv2d_transpose(net, 1, [5, 5], stride=2, padding='SAME', scope='upool1') #self.img_size self.img_size
                 net = self.upool1
                 print (net.get_shape())
                 #net = slim.conv2d(self.upool1, 64, [5, 5], scope='gconv0_1')

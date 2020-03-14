@@ -12,7 +12,7 @@ import time
 import itertools as itr
 from sklearn.utils import shuffle
 
-def squishImage_mtp(zip_args, maxX=16, maxY=16, nchannels=3, scale_delta=96.0):
+def squishImage_mtp(zip_args, maxX=24, maxY=24, nchannels=3, scale_delta=96.0):
     df=zip_args[1]
     index=zip_args[0]
     df_row=df.iloc[index]
@@ -36,14 +36,14 @@ def squishImage_mtp(zip_args, maxX=16, maxY=16, nchannels=3, scale_delta=96.0):
     return np.expand_dims(topo, axis=-1)
 
 class EUV:
-    def __init__(self, reduce_nhs=False, sample_train_from_test=False):
+    def __init__(self, path = './data', reduce_nhs=False, sample_train_from_test=False):
 
-        self.cpu_count=8
-
+        self.cpu_count=1
+        self.path = path
         self.getDataDP()
 
         self.test_batch_pointer=0
-
+        
         self.p=mtp.Pool(self.cpu_count)
         self.train_batch_pointer=0
     def saveImage(self, type, id, path):
@@ -151,8 +151,8 @@ class EUV:
         return squish
 
     def getDataDP(self):
-        train_path = './data/train.msgpack'
-        test_path = './data/test.msgpack'
+        train_path = os.path.join(self.path, 'train.msgpack')
+        test_path = os.path.join(self.path, 'test.msgpack')
         self.train_df = pd.read_msgpack(train_path)
         self.test_df = pd.read_msgpack(test_path)
         self.train_length = self.train_df.shape[0]

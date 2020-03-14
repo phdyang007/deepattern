@@ -64,7 +64,10 @@ def organize(iloc, df=df):
 
  
         topo2d = topo2d.transpose().flatten()
-        dfrow['topoSig'] = ' '.join(topo2d.astype(str))
+        dfrow['topoSig'] = ''.join(topo2d.astype(str))
+    else:
+        topo2d = topo2d.flatten()
+        dfrow['topoSig'] = ''.join(topo2d.astype(str))
     return dfrow
 
 
