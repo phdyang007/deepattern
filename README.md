@@ -42,3 +42,10 @@ use ``` make test% ``` to do inference and generated 1M patterns with noise pert
 
 - connect the generator with reconstion unit do the inference.
 
+
+### Evaluation 
+
+```make eval%```
+
+- calculate the diversity of the training data and valid topology count after noise perturbation.
+

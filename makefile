@@ -23,6 +23,9 @@ test%:
 	python3 src/merge.py ./models/$*/
 	rm -rf models/test/noise_data_*.msgpack
 
+eval%:
+	python3 src/eval.py $* |& tee ./models/$*/test/$@.txt
+
 clean%:
 	rm -rf models/$*
 
