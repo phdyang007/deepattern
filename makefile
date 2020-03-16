@@ -1,12 +1,5 @@
-euv:
-	mkdir -p models/sample
-	mkdir -p models/test
-	python3 src/main.py 
-test:
-	rm -rf models/test/*
-	python3 src/test.py
-
-df:
+fakegen:
+	mkdir -p ./data/fake
 	python3 ./src/fakegen.py
 
 prepare%:

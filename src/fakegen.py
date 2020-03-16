@@ -33,9 +33,9 @@ class FAKE:
 
 fake_enum = FAKE(3,10,10000)
 fake_enum.genPattern()
-fake_enum.dump2msgpack("./data/train.msgpack")
+fake_enum.dump2msgpack("./data/fake/train.msgpack")
 fake_enum = FAKE(3,10,10000)
 fake_enum.genPattern()
-fake_enum.dump2msgpack("./data/test.msgpack")
+fake_enum.dump2msgpack("./data/fake/test.msgpack")
 print(fake_enum.df)
 

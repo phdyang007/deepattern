@@ -49,3 +49,9 @@ use ``` make test% ``` to do inference and generated 1M patterns with noise pert
 
 - calculate the diversity of the training data and valid topology count after noise perturbation.
 
+### Fake Data Generation
+
+use ``` make fake ``` to generate some faked msgpack training and testing data, if you do not have industry layouts.
+
+- msgpacks will be placed at  ```./data/fake/```
+
