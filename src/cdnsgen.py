@@ -166,6 +166,162 @@ class squish_dl:
                         self.squish2img(topo_in, delta, delta, in_dir)
                         self.squish2img(topo_out, delta, delta, out_dir)
           
+    def test_gan(self, data):
+        self.build_model(False)
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list =self.gpu_id
+        delta = np.ones(self.img_size)*5
+
+        with tf.Session(config=config) as sess:
+            idx=1
+            saver = tf.train.Saver(max_to_keep=100)
+            ckpt=tf.train.get_checkpoint_state(self.model_path)
+            ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
+            print (ckpt_name)
+            saver.restore(sess, os.path.join(self.model_path, ckpt_name))
+            test_path=os.path.join(self.model_path, 'test/')
+            test_data = data.getTestBatchDP(batch_size=10)
+
+            topo_in = test_data[idx,:,:,0]
+            
+            #original input
+            print("Step 1")
+            self.squish2img(topo_in, delta, delta, test_path+'origin.png')
+            #original reconstruction
+            test_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
+                                  self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                  self.noise: np.zeros((10, 32))*1.0})
+
+            self.squish2img(test_recon[idx,:,:,0], delta, delta, test_path+'recon.png')
+
+            #no latent var
+            test_recon= sess.run(self.reconstruct, feed_dict={
+                                  self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                  self.noise: -fm})
+
+            self.squish2img(test_recon[idx,:,:,0], delta, delta, test_path+'recon_no_lat.png')
+
+            #add gaussian noise
+            print("Step 2")
+            barat = Bar('Transforming with Gaussian', max=100)
+            f=plt.figure(figsize=(80,80))
+            axes=[f.add_subplot(10,10,i+1) for i in range(100)]
+
+
+            name = test_path+'fm-gaussian.pdf'
+            for a in axes:
+                noise=np.random.normal(size=(10,32))
+
+                noise_recon = sess.run(self.reconstruct, feed_dict={
+                                    self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                    self.noise: noise})
+                
+                tmp_img=self.squish2img(noise_recon[idx,:,:,0], delta, delta, dir=False)
+                a.imshow(tmp_img, cmap='gray')
+                a.axis('off')            
+                a.set_aspect('equal')  
+                barat.next()   
+            f.subplots_adjust(hspace=0, wspace=0)     
+            f.savefig(name)
+            f.clf()
+            plt.close()
+            barat.finish() 
+ 
+            #what does individual feature map represent?
+            print("Step 3")
+            size_x=320
+            size_y=20
+
+            barat = Bar('Transforming Latent Feature Maps', max=100)
+            f=plt.figure(figsize=(80,80))
+            axes=[f.add_subplot(10,10,i+1) for i in range(100)]
+            name = test_path+'fm-affine.pdf'
+
+            for x in range(10):     
+                for y in range(10):
+                    noise = np.zeros((10,32))
+                    a=axes[x*10+y]
+                    fm_idx=x
+                    noise[:,fm_idx]=noise[:,fm_idx]+y-5.0
+                    tmp_recon = sess.run(self.reconstruct, feed_dict={
+                                    self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                    self.noise: noise})
+                    tmp_img=self.squish2img(tmp_recon[idx,:,:,0], delta, delta, dir=False)
+                    a.imshow(tmp_img, cmap='gray')
+                    a.axis('off')            
+                    a.set_aspect('equal')  
+                    barat.next()   
+                    
+        
+            f.subplots_adjust(hspace=0, wspace=0)     
+            f.savefig(name)
+            f.clf()
+            plt.close()
+            barat.finish() 
+       
+            #linear combination of  patterns
+            barat = Bar('Transforming Latent Feature Maps', max=100)
+            name = test_path+'linear-comb'+'.pdf'
+            fm = sess.run(self.fm, feed_dict={
+                    self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                    self.noise: np.zeros((10, 32))*1.0})
+            print (fm[0])
+            f=plt.figure(figsize=(80,80))
+            axes=[f.add_subplot(1,10,i+1) for i in range(10)]
+            i=0
+            for a in axes:
+                alpha=i/10.0
+                noise=np.tile(np.expand_dims(fm[0]*(alpha-1)+(1-alpha)*fm[3], axis=0), reps=(10,1))
+                tmp_recon = sess.run(self.reconstruct, feed_dict={
+                                self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                self.noise: noise})                    
+                tmp_img=self.squish2img(tmp_recon[idx,:,:,0], delta, delta, dir=False)
+                a.imshow(tmp_img, cmap='gray')
+                a.axis('off')
+                a.set_aspect('equal')  
+                i+=1                
+                barat.next()
+            f.subplots_adjust(hspace=0, wspace=0)     
+            f.savefig(name)
+            f.clf()
+            plt.close()
+            barat.finish()
+            
+
+            p=mtp.Pool(8)
+            #Noise Final
+     
+            # df = pd.read_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.msgpack'))
+            df = pd.read_pickle(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.pkl'))
+            noise_gan = df['vector'].tolist()
+            noise_gan = np.array(noise_gan)
+            print(noise_gan.shape)
+
+            test_data_all = data.getTestBatchDP(batch_size=1000)
+            num_noise=1000
+            for ii in range(100):
+                test_data=test_data_all[ii*10:(ii+1)*10]
+                bar= Bar('Enumerating Noises', max=num_noise)
+                for i in range(num_noise):
+                    # noise=np.random.normal(size=(10,32))
+                    noise = noise_gan[i*10:(i+1)*10]
+                    noise_recon = sess.run(self.reconstruct, feed_dict={
+                                        self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                        self.noise: noise})
+                    if i == 0:
+                        noise_patterns = noise_recon[:,:,:,0]
+                        #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
+                    else:
+                        noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
+                    bar.next()
+                bar.finish()
+                tmp = []
+                tmp.append(p.map(generate_msgdata, noise_patterns))
+                tmp=tmp[0]
+         
+                noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
+                noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
+
     def test(self, data):
         self.build_model(False)
         config = tf.ConfigProto()
@@ -298,22 +454,27 @@ class squish_dl:
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
                     noise=np.random.normal(size=(10,32))
+                    noise = noise * 10
                     noise_recon = sess.run(self.reconstruct, feed_dict={
                                         self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                         self.noise: noise})
                     if i == 0:
                         noise_patterns = noise_recon[:,:,:,0]
+                        vector = noise 
                         #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
                     else:
                         noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
-                    
+                        vector = np.concatenate((vector, noise), axis=0)
                     bar.next()
                 bar.finish()
                 tmp = []
                 tmp.append(p.map(generate_msgdata, noise_patterns))
                 tmp=tmp[0]
+
          
+                vector_list = [v.tolist() for v in vector]
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
+                noise_df['vector'] = vector_list
                 noise_df.to_msgpack(test_path+'noise_data_'+str(ii)+'.msgpack')
 
 
