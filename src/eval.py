@@ -13,7 +13,7 @@ def get_div(stat):
     div = 0
     for i in stat:
         pi = i/np.sum(stat)
-        div -= pi*math.log(pi, 2)
+        div -= pi*math.log(pi, np.e)
     
     return div
 
@@ -73,7 +73,10 @@ def analysis_gan(case, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 if __name__== "__main__":
     case = sys.argv[1]
     analysis(case)
-    analysis_gan(case)
+    try:
+        analysis_gan(case)
+    except:
+        print("TCAE-GAN results not avaiable")
 
 
 
