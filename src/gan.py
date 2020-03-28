@@ -105,6 +105,7 @@ def train(model, data, conf):
         lr = conf.learning_rate
         for step in range(conf.max_iter):
             train_data = data.getTrainBatch(conf.batch_size)
+            _ = sess.run([model.g_opt], feed_dict={model.x_real: train_data, model.learning_rate: lr})
             g_loss, d_loss, d_loss_real, d_loss_fake,  _, _ = sess.run([model.g_loss, model.d_loss, model.d_loss_real, model.d_loss_fake, model.g_opt, model.d_opt], feed_dict={model.x_real: train_data, model.learning_rate: lr})
             if step % 1000 == 0:
                 print('Step[%d/%d]: g_loss=%.4f, d_loss=%.4f, d_loss_real: %.4f, d_loss_fake: %.4f'%(step, conf.max_iter, g_loss, d_loss, d_loss_real, d_loss_fake))
@@ -144,10 +145,10 @@ def test(model, conf):
         
 class conf(object):
     batch_size = 128
-    max_iter = 5000000
-    learning_rate = 0.001
+    max_iter = 1000000
+    learning_rate = 0.01
     decay_step = 10000
-    decay_rate = 0.98
+    decay_rate = 0.95
     model_dir = '../models/tc1/gan/'
     data_dir = '../models/tc1/'
     test_save_dir = '../models/tc1/gan/test/'
