@@ -205,9 +205,12 @@ class squish_dl:
                         noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
                     bar.next()
                 bar.finish()
-                tmp = []
-                tmp.append(p.map(generate_msgdata, noise_patterns))
-                tmp=tmp[0]
+                try:
+                    tmp = []
+                    tmp.append(p.map(generate_msgdata, noise_patterns))
+                    tmp=tmp[0]
+                except:
+                    continue
          
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
                 noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
@@ -344,8 +347,10 @@ class squish_dl:
                 test_data=test_data_all[ii*10:(ii+1)*10]
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
-                    noise=np.random.normal(size=(10,32))
-                    noise = noise * 10
+                    #noise=np.random.normal(size=(10,32))
+                    #noise = noise * 10
+                    noise_max=10.0
+                    noise=np.random.uniform(low=-noise_max,high=noise_max,size=(10,32))
                     noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
                                         self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                         self.noise: noise})
@@ -359,9 +364,12 @@ class squish_dl:
                     bar.next()
                 print(noise_patterns.shape)
                 bar.finish()
-                tmp = []
-                tmp.append(p.map(generate_msgdata, noise_patterns))
-                tmp=tmp[0]
+                try:
+                    tmp = []
+                    tmp.append(p.map(generate_msgdata, noise_patterns))
+                    tmp=tmp[0]
+                except:
+                    continue
 
          
                 vector_list = [v.tolist() for v in vector]

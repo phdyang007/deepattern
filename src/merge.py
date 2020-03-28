@@ -9,7 +9,10 @@ df1=pd.DataFrame()
 
 bar=Bar("Merging", max=100)
 for i in range(100):
-    df1=df1.append(pd.read_msgpack(os.path.join(path,'test/noise_data_'+str(i)+'.msgpack')))
+    try:
+        df1=df1.append(pd.read_msgpack(os.path.join(path,'test/noise_data_'+str(i)+'.msgpack')))
+    except:
+        pass
 
     bar.next()
    
