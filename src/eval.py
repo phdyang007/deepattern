@@ -45,11 +45,11 @@ def analysis(case, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     stat_origin = np.int8(df_origin[['cX','cY']].values)
     stat_test = df_test.loc[df_test.valid==1][['cX','cY']].values
-
-
+    stat_pattern  = df_test.loc[df_test.valid==1][['topoSig']].values.flatten()
+    uniq_frac =  len(list(set(stat_pattern)))
     stato, stat_count_origin = np.unique(stat_origin, return_counts=True, axis=0)
     statt, stat_count_test = np.unique(stat_test, return_counts=True, axis=0)
-
+    
     print("======================TCAE=====================")
     print("Calculating Training Data Diversity.....")
     div_origin= get_div(stat_count_origin)
@@ -58,8 +58,8 @@ def analysis(case, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     print("The Diversity of Original Training Data in %s is %f"%(case, div_origin))
     print("The Diversity of Noise Perturbed Data of %s is %f"%(case, div_test))
-    print("The Total # of Unique Valid Pattern Count of %s is %g"%(case, valid_frac))
-
+    print("The Total # of Valid Pattern Count of %s is %g"%(case, valid_frac))
+    print("The Total # of Unique Pattern Count of %s is %g"%(case, uniq_frac))
     #get_opt_div(stat_count_test, div_test, case)
 
     return div_test, valid_frac
@@ -79,6 +79,8 @@ def analysis_gan(case, div_ref, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
     #stato, stat_count_origin = np.unique(stat_origin, return_counts=True, axis=0)
     statt, stat_count_test = np.unique(stat_test, return_counts=True, axis=0)
 
+    stat_pattern  = df_test.loc[df_test.valid==1][['topoSig']].values.flatten()
+    uniq_frac =  len(list(set(stat_pattern)))
     print("======================G-TCAE=====================")
     print("Calculating Training Data Diversity.....")
     #div_origin= get_div(stat_count_origin)
@@ -87,8 +89,8 @@ def analysis_gan(case, div_ref, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     #print("The Diversity of Original Training Data in %s is %f"%(case, div_origin))
     print("The Diversity of Noise Perturbed Data of %s is %f"%(case, div_test))
-    print("The Total # of Unique Valid Pattern Count of %s is %g"%(case, valid_frac))
-
+    print("The Total # of Valid Pattern Count of %s is %g"%(case, valid_frac))
+    print("The Total # of Unique Pattern Count of %s is %g"%(case, uniq_frac))
     get_opt_div(stat_count_test, div_ref, case)
 if __name__== "__main__":
     case = sys.argv[1]
