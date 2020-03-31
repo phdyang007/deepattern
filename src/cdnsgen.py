@@ -167,8 +167,8 @@ class squish_dl:
                         self.squish2img(topo_out, delta, delta, out_dir)
           
     def test_gan(self, data):
-        # self.build_model(False)
-        self.build_gan()
+        self.build_model(False)
+        #self.build_gan()
         config = tf.ConfigProto()
         config.gpu_options.visible_device_list =self.gpu_id
         delta = np.ones(self.img_size)*5
@@ -181,7 +181,8 @@ class squish_dl:
             print (ckpt_name)
             saver.restore(sess, os.path.join(self.model_path, ckpt_name))
             test_path=os.path.join(self.model_path, 'test/')
-
+            test_data = data.getTestBatchDP(batch_size=10)
+            
             p=mtp.Pool(8)
             #Noise Final
      
@@ -191,13 +192,18 @@ class squish_dl:
             noise_gan = np.array(noise_gan)
             print(noise_gan.shape)
 
+            test_data_all = data.getTestBatchDP(batch_size=1000)
             num_noise=1000
             for ii in range(100):
+                test_data=test_data_all[ii*10:(ii+1)*10]
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
                     # noise=np.random.normal(size=(10,32))
                     noise = noise_gan[i*10:(i+1)*10]
-                    noise_recon = sess.run(self.reconstruct, feed_dict={self.input_placeholder: noise})
+         
+                    noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
+                                        self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                        self.noise: noise})
                     if i == 0:
                         noise_patterns = noise_recon[:,:,:,0]
                         #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
@@ -211,7 +217,6 @@ class squish_dl:
                     tmp=tmp[0]
                 except:
                     continue
-         
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
                 noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
 
@@ -347,22 +352,21 @@ class squish_dl:
                 test_data=test_data_all[ii*10:(ii+1)*10]
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
-                    #noise=np.random.normal(size=(10,32))
-                    #noise = noise * 10
-                    noise_max=10.0
-                    noise=np.random.uniform(low=-noise_max,high=noise_max,size=(10,32))
+                    noise=np.random.normal(size=(10,32))
+                    noise = noise * 10
+                    #noise_max=10.0
+                    #noise=np.random.uniform(low=-noise_max,high=noise_max,size=(10,32))
                     noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
                                         self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                         self.noise: noise})
                     if i == 0:
                         noise_patterns = noise_recon[:,:,:,0]
-                        vector = fm 
+                        vector = noise 
                         #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
                     else:
                         noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
-                        vector = np.concatenate((vector, fm), axis=0)
+                        vector = np.concatenate((vector, noise), axis=0)
                     bar.next()
-                print(noise_patterns.shape)
                 bar.finish()
                 try:
                     tmp = []
@@ -434,9 +438,9 @@ class squish_dl:
             self.noise=tf.placeholder(tf.float32, shape=[None, 32])
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
     
-    def build_gan(self):
-        self.input_placeholder = tf.placeholder(tf.float32, shape=(None, 32))
-        self.reconstruct = self.gan_cae(input=self.input_placeholder)
+    #def build_gan(self):
+    #    self.input_placeholder = tf.placeholder(tf.float32, shape=(None, 32))
+    #    self.reconstruct = self.gan_cae(input=self.input_placeholder)
 
     #def build_gan(self, is_training):
     #    if is_training:
@@ -500,7 +504,7 @@ class squish_dl:
 
             return net   
 
-
+"""
     def gan_cae(self, input):
         net=input
         with tf.variable_scope('cae', reuse=tf.AUTO_REUSE):
@@ -533,7 +537,7 @@ class squish_dl:
 
             return net   
 
-
+"""
 
 
 

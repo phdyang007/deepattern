@@ -14,11 +14,11 @@ test%:
 	rm -rf models/test/*
 	python3 src/test.py ./data/$* ./models/$* 
 	python3 src/merge.py ./models/$*/ 
-	rm -rf models/test/noise_data_*.msgpack
+	rm -rf models/$*/test/noise_data_*.msgpack
 
 gantrain%:
 	mkdir -p models/$*/gan/
-	python3 src/gan.py train $* > $@.txt
+	python3 src/gan.py train $*
 gangenerate%:
 	mkdir -p models/$*/gan/test/
 	python3 src/gan.py test $*
@@ -34,6 +34,10 @@ merge%:
 
 eval%:
 	python3 src/eval.py $* |& tee ./models/$*/test/$@.txt
+
+cleangan%:
+	rm -rf models/$*/gan/*
+
 
 clean%:
 	rm -rf models/$*

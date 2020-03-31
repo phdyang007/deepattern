@@ -13,7 +13,7 @@ class gan(object):
         self.learning_rate = tf.placeholder(tf.float32, shape=[])
         # self.latent_vector = tf.placeholder(tf.float32, shape=(None, 128))
         self.latent_vector_size = 8
-        self.latent_vector = tf.random_uniform([self.batch_size, self.latent_vector_size], minval=-1.0, maxval=1.0)
+        self.latent_vector = tf.random_normal([self.batch_size, self.latent_vector_size])
         self.generator = self.build_generator(self.latent_vector, input_shape[0]*input_shape[1]*input_shape[2])
         self.x_fake = self.generator
         self.x_real = tf.placeholder(tf.float32, shape=(None, input_shape[0], input_shape[1], input_shape[2]))
@@ -37,7 +37,9 @@ class gan(object):
                 net = slim.batch_norm(net)
                 net = slim.fully_connected(net, 64, activation_fn=tf.nn.leaky_relu)
                 net = slim.batch_norm(net)
-                net = slim.fully_connected(net, output_dim, activation_fn=tf.nn.tanh)
+                net = slim.fully_connected(net, output_dim, activation_fn=None)
+                #net = tf.math.maximum(net, tf.constant(-5.0))
+                #net = tf.math.minimum(net, tf.constant(5.0))
         return net
     def build_discriminator(self, input, is_training=True):
         with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
@@ -49,7 +51,7 @@ class gan(object):
                 net = slim.flatten(input)
                 net = slim.fully_connected(net, 32, activation_fn=tf.nn.leaky_relu)
                 net = slim.fully_connected(net, 16, activation_fn=tf.nn.leaky_relu)
-                net = slim.fully_connected(net, 2, activation_fn=tf.nn.sigmoid)
+                net = slim.fully_connected(net, 2, activation_fn=None)
         return net
     def build_loss(self):
         ones = tf.ones([self.batch_size], dtype=tf.int64)
@@ -107,7 +109,7 @@ def train(model, data, conf):
             train_data = data.getTrainBatch(conf.batch_size)
             _ = sess.run([model.g_opt], feed_dict={model.x_real: train_data, model.learning_rate: lr})
             g_loss, d_loss, d_loss_real, d_loss_fake,  _, _ = sess.run([model.g_loss, model.d_loss, model.d_loss_real, model.d_loss_fake, model.g_opt, model.d_opt], feed_dict={model.x_real: train_data, model.learning_rate: lr})
-            if step % 1000 == 0:
+            if step % 50 == 0:
                 print('Step[%d/%d]: g_loss=%.4f, d_loss=%.4f, d_loss_real: %.4f, d_loss_fake: %.4f'%(step, conf.max_iter, g_loss, d_loss, d_loss_real, d_loss_fake))
             if (step % conf.decay_step == conf.decay_step - 1):
                 lr *= conf.decay_rate
@@ -145,7 +147,7 @@ def test(model, conf):
         
 class conf(object):
     batch_size = 128
-    max_iter = 1000000
+    max_iter = 100000
     learning_rate = 0.01
     decay_step = 10000
     decay_rate = 0.95
