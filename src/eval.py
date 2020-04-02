@@ -42,11 +42,15 @@ def analysis(case, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     df_origin = pd.read_msgpack(origin_msg)
     df_test = pd.read_msgpack(test_msg)
+    df_test = df_test.loc[df_test.valid==1]
+    stat_pattern  = df_test[['topoSig']].values
+    all_valid = len(stat_pattern)
+    uniq_frac, uniq_idx =  np.unique(stat_pattern, return_index=True)
 
+    df_test = df_test.iloc[uniq_idx]
     stat_origin = np.int8(df_origin[['cX','cY']].values)
-    stat_test = df_test.loc[df_test.valid==1][['cX','cY']].values
-    stat_pattern  = df_test.loc[df_test.valid==1][['topoSig']].values.flatten()
-    uniq_frac =  len(list(set(stat_pattern)))
+    stat_test = df_test[['cX','cY']].values
+
     stato, stat_count_origin = np.unique(stat_origin, return_counts=True, axis=0)
     statt, stat_count_test = np.unique(stat_test, return_counts=True, axis=0)
     
@@ -58,28 +62,31 @@ def analysis(case, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     print("The Diversity of Original Training Data in %s is %f"%(case, div_origin))
     print("The Diversity of Noise Perturbed Data of %s is %f"%(case, div_test))
-    print("The Total # of Valid Pattern Count of %s is %g"%(case, valid_frac))
-    print("The Total # of Unique Pattern Count of %s is %g"%(case, uniq_frac))
-    #get_opt_div(stat_count_test, div_test, case)
+    print("The Total # of Unique Valid Pattern Count of %s is %g"%(case, valid_frac))
+    print("The Total # of Valid Pattern Count of %s is %g"%(case, all_valid))
+
+
 
     return div_test, valid_frac
 
 def analysis_gan(case, div_ref, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
-    
-    #origin_msg = os.path.join('./data/', case+'/train.msgpack')
+
     test_msg = os.path.join('./models/', case+'/gan/test/noise_data.msgpack')
 
-    #df_origin = pd.read_msgpack(origin_msg)
     df_test = pd.read_msgpack(test_msg)
+    df_test = df_test.loc[df_test.valid==1]
 
-    #stat_origin = np.int8(df_origin[['cX','cY']].values)
-    stat_test = df_test.loc[df_test.valid==1][['cX','cY']].values
+    stat_pattern  = df_test[['topoSig']].values
+    all_valid = len(stat_pattern)
+    uniq_frac, uniq_idx =  np.unique(stat_pattern, return_index=True)
+    df_test = df_test.iloc[uniq_idx]
+    stat_test = df_test[['cX','cY']].values
 
 
-    #stato, stat_count_origin = np.unique(stat_origin, return_counts=True, axis=0)
+    
     statt, stat_count_test = np.unique(stat_test, return_counts=True, axis=0)
 
-    stat_pattern  = df_test.loc[df_test.valid==1][['topoSig']].values.flatten()
+    stat_pattern  = df_test[['topoSig']].values.flatten()
     uniq_frac =  len(list(set(stat_pattern)))
     print("======================G-TCAE=====================")
     print("Calculating Training Data Diversity.....")
@@ -89,8 +96,8 @@ def analysis_gan(case, div_ref, dim_max = 24): #case: tc1 tc2 tc3 tc4 tc5 tc6
 
     #print("The Diversity of Original Training Data in %s is %f"%(case, div_origin))
     print("The Diversity of Noise Perturbed Data of %s is %f"%(case, div_test))
-    print("The Total # of Valid Pattern Count of %s is %g"%(case, valid_frac))
-    print("The Total # of Unique Pattern Count of %s is %g"%(case, uniq_frac))
+    print("The Total # of Unique Valid Pattern Count of %s is %g"%(case, valid_frac))
+    print("The Total # of Valid Pattern Count of %s is %g"%(case, all_valid))
     get_opt_div(stat_count_test, div_ref, case)
 if __name__== "__main__":
     case = sys.argv[1]

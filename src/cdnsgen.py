@@ -89,6 +89,7 @@ class squish_dl:
         self.show_itr=show_itr
         self.model_path=model_path
         self.gpu_id=gpu_id
+        self.noise_multiplier = 10.0
         self.noise=tf.placeholder(tf.float32, shape=[None, 64])
         self.lr_placeholer=tf.placeholder(tf.float32, shape=[])
         self.input_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
@@ -353,7 +354,7 @@ class squish_dl:
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
                     noise=np.random.normal(size=(10,32))
-                    noise = noise * 10
+                    noise = noise * self.noise_multiplier
                     #noise_max=10.0
                     #noise=np.random.uniform(low=-noise_max,high=noise_max,size=(10,32))
                     noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
@@ -419,6 +420,69 @@ class squish_dl:
                 bar.next()
             bar.finish()
             """
+    def gangen(self, data):
+        self.build_model(False)
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list =self.gpu_id
+        delta = np.ones(self.img_size)*5
+
+        with tf.Session(config=config) as sess:
+            idx=1
+            saver = tf.train.Saver(max_to_keep=100)
+            ckpt=tf.train.get_checkpoint_state(self.model_path)
+            ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
+            print (ckpt_name)
+            saver.restore(sess, os.path.join(self.model_path, ckpt_name))
+            test_path=os.path.join(self.model_path, 'gan/train')
+            test_data = data.getTestBatchDP(batch_size=10)
+
+            topo_in = test_data[idx,:,:,0]
+
+            # p=mtp.Pool(8)
+            p=mtp.Pool(4)
+            #Noise Final
+        
+            test_data_all = data.getTestBatchDP(batch_size=1000)
+            num_noise=1000
+            baro = Bar('Dumping Files', max=1000)
+            for runs in range(1):
+                for ii in range(100):
+                    test_data=test_data_all[ii*10:(ii+1)*10]
+                    bar= Bar('Enumerating Noises', max=num_noise)
+                    for i in range(num_noise):
+                        noise=np.random.normal(size=(10,32))
+                        noise = noise * self.noise_multiplier
+                        #noise_max=10.0
+                        #noise=np.random.uniform(low=-noise_max,high=noise_max,size=(10,32))
+                        noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
+                                            self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                            self.noise: noise})
+                        if i == 0:
+                            noise_patterns = noise_recon[:,:,:,0]
+                            vector = noise 
+                            #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
+                        else:
+                            noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
+                            vector = np.concatenate((vector, noise), axis=0)
+                        bar.next()
+                    bar.finish()
+                    try:
+                        tmp = []
+                        tmp.append(p.map(generate_msgdata, noise_patterns))
+                        tmp=tmp[0]
+                    except:
+                        continue
+                    
+           
+
+                
+                    vector_list = [v.tolist() for v in vector]
+                    noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
+                    noise_df['vector'] = vector_list
+
+                    noise_df.to_msgpack(os.path.join(test_path,'noise_data_'+str(runs*100+ii)+'.msgpack'))
+                    baro.next()
+            baro.finish()
 
     def build_model(self, is_training):
         #self.feature=self.discriminator(self.input_placeholder, is_training)

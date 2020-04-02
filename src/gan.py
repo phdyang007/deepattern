@@ -12,7 +12,7 @@ class gan(object):
         self.batch_size = batch_size
         self.learning_rate = tf.placeholder(tf.float32, shape=[])
         # self.latent_vector = tf.placeholder(tf.float32, shape=(None, 128))
-        self.latent_vector_size = 8
+        self.latent_vector_size = 32
         self.latent_vector = tf.random_normal([self.batch_size, self.latent_vector_size])
         self.generator = self.build_generator(self.latent_vector, input_shape[0]*input_shape[1]*input_shape[2])
         self.x_fake = self.generator
@@ -27,15 +27,32 @@ class gan(object):
     def build_generator(self, input, output_dim, is_training=True, alpha=0.2):
         with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
             with slim.arg_scope([slim.conv2d, slim.fully_connected], 
+                #activation_fn=[tf.nn.relu, tf.nn.leaky_relu, tf.nn.tanh],
+                weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
+                biases_initializer=tf.constant_initializer(0.0),
+                weights_regularizer=slim.l2_regularizer(0.01)):
+                net = slim.fully_connected(input, 32, activation_fn=tf.nn.leaky_relu)
+                net = slim.batch_norm(net)
+                #net = slim.fully_connected(net, 64, tf.nn.leaky_relu)
+                #net = slim.batch_norm(net) 
+                #net = slim.fully_connected(net, 64, tf.nn.leaky_relu)
+                #net = slim.batch_norm(net)
+                net = slim.fully_connected(net, output_dim, activation_fn=None)
+                #net = tf.math.maximum(net, tf.constant(-5.0))
+                #net = tf.math.minimum(net, tf.constant(5.0))
+        return net
+    def build_conv_generator(self, input, output_dim, is_training=True, alpha=0.2):
+        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+            with slim.arg_scope([slim.conv2d, slim.fully_connected], 
                 activation_fn=[tf.nn.relu, tf.nn.leaky_relu, tf.nn.tanh],
                 weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                 biases_initializer=tf.constant_initializer(0.0),
                 weights_regularizer=slim.l2_regularizer(0.01)):
-                net = slim.fully_connected(input, 16, activation_fn=tf.nn.leaky_relu)
+                net = slim.fully_connected(input, 64, activation_fn=None)#tf.nn.leaky_relu)
                 net = slim.batch_norm(net)
-                net = slim.fully_connected(net, 32, activation_fn=tf.nn.leaky_relu)
+                net = slim.fully_connected(net, 64, activation_fn=None)#tf.nn.leaky_relu)
                 net = slim.batch_norm(net)
-                net = slim.fully_connected(net, 64, activation_fn=tf.nn.leaky_relu)
+                net = slim.fully_connected(net, 64, activation_fn=None)#tf.nn.leaky_relu)
                 net = slim.batch_norm(net)
                 net = slim.fully_connected(net, output_dim, activation_fn=None)
                 #net = tf.math.maximum(net, tf.constant(-5.0))
@@ -147,8 +164,8 @@ def test(model, conf):
         
 class conf(object):
     batch_size = 128
-    max_iter = 100000
-    learning_rate = 0.01
+    max_iter = 50000
+    learning_rate = 0.001
     decay_step = 10000
     decay_rate = 0.95
     model_dir = '../models/tc1/gan/'
