@@ -31,7 +31,7 @@ class gan(object):
                 weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
                 biases_initializer=tf.constant_initializer(0.0),
                 weights_regularizer=slim.l2_regularizer(0.01)):
-                net = slim.fully_connected(input, 32, activation_fn=tf.nn.leaky_relu)
+                net = slim.fully_connected(input, 64, activation_fn=tf.nn.leaky_relu)
                 net = slim.batch_norm(net)
                 #net = slim.fully_connected(net, 64, tf.nn.leaky_relu)
                 #net = slim.batch_norm(net) 
