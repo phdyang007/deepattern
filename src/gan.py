@@ -179,6 +179,12 @@ class conf(object):
         self.test_save_dir = os.path.join(self.model_dir, 'test')
 
 
+class confcsg(conf):
+    def __init__(self, flag):
+        self.data_dir = os.path.join('data/csg', flag)
+        self.model_dir = os.path.join('models', flag)
+        self.test_save_dir = os.path.join(self.model_dir, 'test')
+
 class Data(object):
     def __init__(self, filedir):
         self.filename = os.path.join(filedir, 'test/noise_data.msgpack')
@@ -217,6 +223,21 @@ class Data(object):
         df1.to_msgpack(os.path.join(filedir, 'test/vector.msgpack'))
     
 
+class Datacsg(Data):
+    def __init__(self, filedir):
+        self.filename = os.path.join(filedir, 'train.msgpack')
+        self.filedir = filedir
+        self.data = pd.read_msgpack(self.filename)
+        self.data = self.data[self.data['valid'] == 1]
+        self.data = self.data['vector'].tolist()
+        self.data = np.array(self.data)
+        self.current_ptr = 0
+        print(self.data.shape)
+        
+
+
+
+
     
 if __name__ == '__main__':
     if sys.argv[1] == 'train':
@@ -226,6 +247,15 @@ if __name__ == '__main__':
         train(model, data, c)
     elif sys.argv[1] == 'test':
         c = conf(sys.argv[2])
+        model = gan(batch_size=100)
+        test(model, c)
+    elif sys.argv[1] == 'csgtrain':
+        c = confcsg(sys.argv[2])
+        model = gan()
+        data = Datacsg(c.data_dir)
+        train(model, data, c)
+    elif sys.argv[1] == 'csgtest':
+        c = confcsg(sys.argv[2])
         model = gan(batch_size=100)
         test(model, c)
     else:

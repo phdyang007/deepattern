@@ -68,6 +68,22 @@ clean_all:
 	rm -rf models/*
 
 
+###Context Specific Generation
 
+preparecsg%: #high mid low
+	rm -rf data/csg/*
+	mkdir -p data/csg/low
+	mkdir -p data/csg/mid
+	mkdir -p data/csg/high
+	python3 src/preparecsg.py $*
+
+csgtrain%:
+	mkdir -p models/$*/
+	python3 src/gan.py csgtrain $*
+	mkdir -p models/$*/test/
+	python3 src/gan.py csgtest $*
+
+csgtest%:
+	
 
 	

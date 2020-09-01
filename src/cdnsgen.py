@@ -220,7 +220,60 @@ class squish_dl:
                     continue
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
                 noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
+    def test_csg(self, data):
+        self.build_model(False)
+        #self.build_gan()
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list =self.gpu_id
+        delta = np.ones(self.img_size)*5
 
+        with tf.Session(config=config) as sess:
+            idx=1
+            saver = tf.train.Saver(max_to_keep=100)
+            ckpt=tf.train.get_checkpoint_state(self.model_path)
+            ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
+            print (ckpt_name)
+            saver.restore(sess, os.path.join(self.model_path, ckpt_name))
+            test_path=os.path.join(self.model_path, 'test/')
+            test_data = data.getTestBatchDP(batch_size=10)
+            
+            p=mtp.Pool(8)
+            #Noise Final
+     
+            # df = pd.read_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.msgpack'))
+            df = pd.read_pickle(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.pkl'))
+            noise_gan = df['vector'].tolist()
+            noise_gan = np.array(noise_gan)
+            print(noise_gan.shape)
+
+            test_data_all = data.getTestBatchDP(batch_size=1000)
+            num_noise=1000
+            for ii in range(100):
+                test_data=test_data_all[ii*10:(ii+1)*10]
+                bar= Bar('Enumerating Noises', max=num_noise)
+                for i in range(num_noise):
+                    # noise=np.random.normal(size=(10,32))
+                    noise = noise_gan[i*10:(i+1)*10]
+         
+                    noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
+                                        self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
+                                        self.noise: noise})
+                    if i == 0:
+                        noise_patterns = noise_recon[:,:,:,0]
+                        #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
+                    else:
+                        noise_patterns = np.concatenate((noise_patterns, noise_recon[:,:,:,0]), axis=0)
+                    bar.next()
+                bar.finish()
+                try:
+                    tmp = []
+                    tmp.append(p.map(generate_msgdata, noise_patterns))
+                    tmp=tmp[0]
+                except:
+                    continue
+                noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
+                noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
+        
     def test(self, data):
         self.build_model(False)
         config = tf.ConfigProto()
