@@ -173,6 +173,18 @@ class EUV:
 
 
         return test
+    def getTrainBatchTmp(self, batch_size):
+        if self.train_batch_pointer+batch_size < self.test_length:
+            indices = range(self.train_batch_pointer, self.train_batch_pointer+batch_size)
+            self.train_batch_pointer += batch_size
+        else:
+            indices = range(self.train_batch_pointer,self.test_length)
+            self.train_batch_pointer=0
+        batch = self.df2tensor(self.train_df.iloc[indices])[0]
+
+
+
+        return batch
 
     def df2tensor(self, df_rows):
         indices=range(df_rows.shape[0])

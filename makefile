@@ -33,6 +33,15 @@ test%:
 	python3 src/merge.py ./models/$*/ tcae
 	rm -rf models/$*/test/noise_data_*.msgpack
 
+
+###tmp eval to address unfair comparison in Table II.
+
+tmpeval%:
+	python3 src/evaltmp.py tc1 $*
+
+
+###tmp eval to address unfair comparison in Table II.
+
 gangen%:
 	mkdir -p models/$*/gan/train
 	python3 src/gangen.py ./data/$* ./models/$*
@@ -70,7 +79,11 @@ clean_all:
 
 ###Context Specific Generation
 
-preparecsg%: #high mid low
+
+infer%:  ##get feature vectors of training dataset
+	python3 src/testtmp.py ./data/$* ./models/$*
+
+precsg%: #high mid low
 	rm -rf data/csg/*
 	mkdir -p data/csg/low
 	mkdir -p data/csg/mid
@@ -78,12 +91,22 @@ preparecsg%: #high mid low
 	python3 src/preparecsg.py $*
 
 csgtrain%:
+	rm -rf models/$*/*
 	mkdir -p models/$*/
 	python3 src/gan.py csgtrain $*
 	mkdir -p models/$*/test/
 	python3 src/gan.py csgtest $*
 
 csgtest%:
-	
+	python3 src/testcsg.py ./models/tc1 ./models/$*/test
+	python3 src/merge.py ./models/$*/test null
+	rm -rf models/$*/test/noise_data_*.msgpack
+
+csgeval%:
+	python3 src/evalcsg.py $*
 
 	
+csg_evalall: csgevallow csgevalmid csgevalhigh
+csg_testall: csgtestlow csgtestmid csgtesthigh
+csg_trainall: csgtrainlow csgtrainmid csgtrainhigh
+csg_all: csg_trainall csg_testall csg_evalall

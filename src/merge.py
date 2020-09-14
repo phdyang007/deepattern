@@ -22,6 +22,19 @@ if which=="tcae":
     
     bar.finish()
     df1.to_msgpack(os.path.join(path, 'test/noise_data.msgpack'))
+elif which=="data":
+    df1=pd.DataFrame()
+    bar=Bar("Merging", max=100)
+    for i in range(6):
+        try:
+            df1=df1.append(pd.read_msgpack(os.path.join(path,'tc'+str(i+1)+'/train_with_feature.msgpack')))
+        except:
+            pass
+
+        bar.next()
+    
+    bar.finish()
+    df1.to_msgpack(os.path.join(path, 'tc0/train_with_feature.msgpack')) 
 else:
     df1=pd.DataFrame()
     bar=Bar("Merging", max=1000)

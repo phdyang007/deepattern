@@ -1,13 +1,15 @@
 import sys
 import os
 import pandas as pd
-
+import numpy as np
 def prepare(path):
     df=pd.read_msgpack(path)
-    df=df.loc[df['valid']==1]
-    df_low=df.loc[df['cX']<7]
-    df_mid=df.loc[df['cX']==10]
-    df_high=df.loc[df['cX']>13]
+
+
+
+    df_low=df.loc[df['cX']<5]
+    df_mid=df.loc[(df['cX']>=10) & (df['cX']<12)]
+    df_high=df.loc[df['cX']>=16]
     low_path = "./data/csg/low/train.msgpack"
     mid_path = "./data/csg/mid/train.msgpack"
     high_path = "./data/csg/high/train.msgpack"
@@ -17,5 +19,6 @@ def prepare(path):
     df_high.to_msgpack(high_path)
 
 if __name__ == '__main__':
-    path = "./models/" + sys.argv[1] + "/test/noise_data.msgpack"
+    path = "./data/" + sys.argv[1] + "/train_with_feature.msgpack"
+    #path = "./data/" + sys.argv[1] + "/train_with.msgpack"
     prepare(path)

@@ -220,7 +220,7 @@ class squish_dl:
                     continue
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
                 noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
-    def test_csg(self, data):
+    def test_csg(self, vecpath):
         self.build_model(False)
         #self.build_gan()
         config = tf.ConfigProto()
@@ -234,27 +234,26 @@ class squish_dl:
             ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
             print (ckpt_name)
             saver.restore(sess, os.path.join(self.model_path, ckpt_name))
-            test_path=os.path.join(self.model_path, 'test/')
-            test_data = data.getTestBatchDP(batch_size=10)
+            test_path=os.path.join(vecpath, 'test/')
             
             p=mtp.Pool(8)
             #Noise Final
      
             # df = pd.read_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.msgpack'))
-            df = pd.read_pickle(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.pkl'))
+            df = pd.read_pickle(os.path.join(vecpath, 'vector.pkl'))
             noise_gan = df['vector'].tolist()
             noise_gan = np.array(noise_gan)
             print(noise_gan.shape)
+            test_data = np.zeros((10, self.img_size, self.img_size, 1)) * 1.0
 
-            test_data_all = data.getTestBatchDP(batch_size=1000)
             num_noise=1000
             for ii in range(100):
-                test_data=test_data_all[ii*10:(ii+1)*10]
+
                 bar= Bar('Enumerating Noises', max=num_noise)
                 for i in range(num_noise):
                     # noise=np.random.normal(size=(10,32))
                     noise = noise_gan[i*10:(i+1)*10]
-         
+                    
                     noise_recon, fm = sess.run([self.reconstruct, self.fm], feed_dict={
                                         self.input_placeholder: np.expand_dims(test_data[:,:,:,0], axis=-1), 
                                         self.noise: noise})
@@ -272,8 +271,55 @@ class squish_dl:
                 except:
                     continue
                 noise_df=pd.DataFrame(tmp, columns=['topoSig','cX','cY','valid'])
-                noise_df.to_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'noise_data_'+str(ii)+'.msgpack'))
-        
+                noise_df.to_msgpack(os.path.join(vecpath, 'noise_data_'+str(ii)+'.msgpack'))
+    def test_tmp(self, data):
+        self.build_model(False)
+        #self.build_gan()
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list =self.gpu_id
+     
+
+        with tf.Session(config=config) as sess:
+            idx=1
+            saver = tf.train.Saver(max_to_keep=100)
+            ckpt=tf.train.get_checkpoint_state(self.model_path)
+            ckpt_name=os.path.basename(ckpt.model_checkpoint_path)
+            print (ckpt_name)
+            saver.restore(sess, os.path.join(self.model_path, ckpt_name))
+            
+            p=mtp.Pool(8)
+            #Noise Final
+     
+            # df = pd.read_msgpack(os.path.join(os.path.join(self.model_path, 'gan/test'), 'vector.msgpack'))
+
+            batch_size= 1000
+            # test_data_all = data.getTestBatchDP(batch_size=1000)
+            # num_noise=1000
+            bar= Bar('Train Inferencing', max=data.train_length//batch_size+1)
+            for ii in range(data.train_length//batch_size+1):
+                batch_data = data.getTrainBatchTmp(batch_size)
+
+                if ii==data.train_length//batch_size:
+                    batch_data=np.concatenate((batch_data, np.zeros((self.batch_size-len(batch_data), self.img_size, self.img_size, 1))*1.0), axis=0)
+
+                noise = np.zeros((self.batch_size, 32)) * 1.0
+         
+                fm = sess.run(self.fm, feed_dict={
+                                        self.input_placeholder: np.expand_dims(batch_data[:,:,:,0], axis=-1),
+                                        self.noise: noise})
+                if ii == 0:
+                    features = fm
+                    #self.squish2img(noise_recon[0,:,:,0], delta, delta, dir=test_path+'noise11111.png')
+                else:
+                    features  = np.concatenate((features, fm), axis=0)
+                bar.next()
+            bar.finish()
+            features = features[:data.train_length]
+            features_list = [v.tolist() for v in features]
+            df_with_feature=data.train_df
+            df_with_feature['vector']=features_list
+            print(df_with_feature)
+            df_with_feature.to_msgpack(os.path.join(data.path, 'train_with_feature.msgpack'))
     def test(self, data):
         self.build_model(False)
         config = tf.ConfigProto()
@@ -551,7 +597,7 @@ class squish_dl:
             self.recon_loss=tf.reduce_mean(tf.squared_difference(self.input_placeholder, self.reconstruct))
             self.op=tf.train.RMSPropOptimizer(self.lr_placeholer).minimize(self.recon_loss)
         else:
-            self.input_placeholder=tf.placeholder(tf.float32, shape=(10, self.img_size, self.img_size, self.img_channel))
+            self.input_placeholder=tf.placeholder(tf.float32, shape=(self.batch_size, self.img_size, self.img_size, self.img_channel))
             self.noise=tf.placeholder(tf.float32, shape=[None, 32])
             self.reconstruct = self.cae(input=self.input_placeholder, is_training=False, noise=self.noise)
     

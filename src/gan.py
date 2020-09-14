@@ -166,8 +166,8 @@ class conf(object):
     batch_size = 128
     max_iter = 50000
     learning_rate = 0.001
-    decay_step = 10000
-    decay_rate = 0.95
+    decay_step = 5000
+    decay_rate = 0.7
     model_dir = '../models/tc1/gan/'
     data_dir = '../models/tc1/'
     test_save_dir = '../models/tc1/gan/test/'
@@ -228,7 +228,10 @@ class Datacsg(Data):
         self.filename = os.path.join(filedir, 'train.msgpack')
         self.filedir = filedir
         self.data = pd.read_msgpack(self.filename)
-        self.data = self.data[self.data['valid'] == 1]
+        try:
+            self.data = self.data[self.data['valid'] == 1]
+        except:
+            print("no entry for 'valid'")
         self.data = self.data['vector'].tolist()
         self.data = np.array(self.data)
         self.current_ptr = 0
@@ -251,6 +254,8 @@ if __name__ == '__main__':
         test(model, c)
     elif sys.argv[1] == 'csgtrain':
         c = confcsg(sys.argv[2])
+        c.max_iter=10000
+        c.save_step=9999
         model = gan()
         data = Datacsg(c.data_dir)
         train(model, data, c)
